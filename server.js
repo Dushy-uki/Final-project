@@ -6,16 +6,24 @@ dotenv.config();
 const app = express();
 
 import authRoutes from './routes/authRoutes.js';
+
 import cors from "cors";    
 import connectDB from "./config/db.js";
 connectDB(); 
-
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
+import userRoutes from './routes/userRoutes.js';
+
+import adminRoutes from './routes/adminRoutes.js';
+
+
+
+app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Basic Route
 app.get('/', (req, res) => {

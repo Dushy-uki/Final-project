@@ -1,11 +1,13 @@
+// routes/adminRoutes.js
 import express from 'express';
-import { authenticate } from '../middleware/authMiddleware.js';
-import { authorizeRoles } from '../middleware/roleMiddleware.js';
+import { getAllUsers, updateUser, deleteUser } from '../controllers/adminController.js';
+import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/create-job', authenticate, authorizeRoles('admin'), (req, res) => {
-  res.status(201).json({ message: 'Job created successfully (mock)' });
-});
+// Admin-only access
+router.get('/', verifyToken, isAdmin, getAllUsers);
+router.put('/:id', verifyToken, isAdmin, updateUser);
+router.delete('/:id', verifyToken, isAdmin, deleteUser);
 
 export default router;
