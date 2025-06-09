@@ -1,0 +1,427 @@
+
+
+// ===== controllers/adminController.js =====
+
+import User from '../models/user.js';
+
+// Get all users (Admin only)
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password'); // Exclude password
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+};
+
+// Update a user by ID (Admin only)
+export const updateUser = async (req, res) => {
+  const { id } = req.params;
+  const { name, email, role } = req.body;
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { name, email, role },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+};
+
+// Delete a user by ID (Admin only)
+export const deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    if (!deletedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
+
+// ===== controllers/aiController.js =====
+
+
+export const updateResume = (req, res) => {
+  const { jobTitle, tasks, duration, feedback } = req.body;
+  const resumeContent = `Worked as ${jobTitle} for ${duration}. Tasks: ${tasks}. Feedback: ${feedback}`;
+  res.status(200).json({ resumeContent });
+};
+ 
+// controllers/resumeController.js
+import Resume from '../models/resume.js';
+
+export const createResume = async (req, res) => {
+  try {
+    const resume = await Resume.create({ ...req.body, user: req.user.id });
+    res.status(201).json(resume);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create resume' });
+  }
+};
+
+export const getUserResume = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({ user: req.user.id });
+    res.status(200).json(resume);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch resume' });
+  }
+};
+
+
+// ===== controllers/auth.js =====
+
+import jwt from 'jsonwebtoken';
+
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+
+  // password check skipped for brevity
+
+  const token = jwt.sign(
+    { id: user._id, role: user.role },     // payload
+    process.env.JWT_SECRET,               // secret key
+    { expiresIn: '7d' }                   // optional: token expiry
+  );
+
+  res.status(200).json({
+    token,
+    role: user.role,
+    user: { id: user._id, name: user.name }
+  });
+};
+
+
+// ===== controllers/authController.js =====
+
+// controllers/authController.js
+import User from '../models/user.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+export const register = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hashedPassword, role });
+
+    res.status(201).json({ message: 'Registration successful' });
+  } catch (err) {
+    console.error('Register error:', err.message); // ✅ Add this line for debugging
+    res.status(500).json({ error: 'Server error' }); // ✅ Keep this response
+  }
+};
+
+
+
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.status(200).json({
+      message: 'Login successful',
+      token
+    });
+  } catch (err) {
+    console.error('Login error:', err); // 👈 Helpful for debugging
+    res.status(500).json({ error: 'Login failed' });
+  }
+};
+
+
+// ===== controllers/jobController.js =====
+
+
+import Job from '../models/Job.js';
+
+export const createJob = async (req, res) => {
+  try {
+    const job = new Job({ ...req.body, postedBy: req.user.id });
+    await job.save();
+    res.status(201).json({ message: 'Job posted successfully' });
+  } catch (err) {
+    res.status(400).json({ error: 'Validation error' });
+  }
+};
+
+export const applyJob = async (req, res) => {
+  // mock implementation
+  res.status(200).json({ message: 'Application submitted (mock)' });
+};
+
+
+// ===== controllers/userController.js =====
+
+import User from '../models/user.js';
+
+// Create a new user (or any other item)
+export const createUser = async (req, res) => {
+  const { name, email, password  } = req.body;
+  try {
+    const newUser = new User({ name, email, password });
+    await newUser.save();
+    res.status(201).json({ message: 'User created successfully', user: newUser });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+};
+
+
+
+
+// ===== models/Job.js =====
+
+import mongoose from 'mongoose';
+
+const jobSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  company: { type: String, required: true },
+  description: { type: String },
+  location: { type: String },
+  type: { type: String }, 
+  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+const Job = mongoose.model('Job', jobSchema);
+
+export default Job;
+
+
+// ===== models/resume.js =====
+
+// models/resume.js
+import mongoose from 'mongoose';
+
+const resumeSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  fullName: String,
+  email: String,
+  phone: String,
+  education: [
+    {
+      institution: String,
+      degree: String,
+      year: String,
+    },
+  ],
+  experience: [
+    {
+      company: String,
+      role: String,
+      duration: String,
+      description: String,
+    },
+  ],
+  skills: [String],
+  summary: String,
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+export default mongoose.model('Resume', resumeSchema);
+
+
+// ===== models/user.js =====
+
+// models/user.js
+import mongoose from 'mongoose';
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+  role: {
+    type: String,
+    enum: ['admin', 'user'], // ✅ 'user' must be here
+    default: 'user'
+  }
+});
+
+export default mongoose.model('User', userSchema);
+
+
+// ===== routes/adminRoutes.js =====
+
+// routes/adminRoutes.js
+import express from 'express';
+import { getAllUsers, updateUser, deleteUser } from '../controllers/adminController.js';
+import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
+
+const router = express.Router();
+
+// Admin-only access
+router.get('/', verifyToken, isAdmin, getAllUsers);
+router.put('/:id', verifyToken, isAdmin, updateUser);
+router.delete('/:id', verifyToken, isAdmin, deleteUser);
+
+export default router;
+
+
+// ===== routes/aiRoutes.js =====
+
+
+import express from 'express';
+import { updateResume } from '../controllers/aiController.js';
+import { authenticate } from '../middleware/authMiddleware.js';
+
+const router = express.Router();
+router.post('/resume-update', authenticate, updateResume);
+
+export default router;
+
+
+
+// ===== routes/authRoutes.js =====
+
+import express from 'express';
+import { register, login } from '../controllers/authController.js';
+
+const router = express.Router();
+
+router.post('/register', register);
+router.post('/login', login);
+
+export default router;
+
+
+// ===== routes/jobRoutes.js =====
+
+// routes/jobRoutes.js
+import express from 'express';
+import { authenticate } from '../middleware/authMiddleware.js';
+import { authorizeRoles } from '../middleware/roleMiddleware.js';
+import { createJob, applyJob } from '../controllers/jobController.js';
+
+const router = express.Router();
+
+router.post('/admin/jobs', authenticate, authorizeRoles('admin'), createJob);
+router.post('/jobs/:id/apply', authenticate, authorizeRoles('student'), applyJob);
+
+export default router;
+
+
+// ===== routes/resumeRoutes.js =====
+
+import express from 'express';
+import { createResume, getUserResume } from '../controllers/resumeController.js';
+import { verifyToken } from '../middleware/authMiddleware.js';
+
+const router = express.Router();
+
+router.post('/', verifyToken, createResume);
+router.get('/', verifyToken, getUserResume);
+
+export default router;
+
+// ===== routes/userRoutes.js =====
+
+import express from 'express';
+import { createUser } from '../controllers/userController.js';
+const router = express.Router();
+
+router.post('/', createUser); // POST /api/users
+
+
+
+export default router;
+
+
+// ===== config/db.js =====
+
+import mongoose from "mongoose";
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('MongoDB connected successfully');
+  } catch (error) {
+    console.error('MongoDB connection error:', error.message);
+    process.exit(1);
+  }
+};
+
+export default connectDB;
+
+// ===== server.js =====
+
+import express from "express";
+import dotenv from "dotenv";
+dotenv.config();
+// import User from '../models/User.js';   
+
+const app = express();
+
+import authRoutes from './routes/authRoutes.js';
+
+import cors from "cors";    
+import connectDB from "./config/db.js";
+connectDB(); 
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+import userRoutes from './routes/userRoutes.js';
+
+import adminRoutes from './routes/adminRoutes.js';
+
+
+
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Basic Route
+app.get('/', (req, res) => {
+  res.send('Time Pro API is running...');
+});
+
+
+// Start Server
+const PORT = process.env.PORT ;
+app.listen(PORT, () => console.log(` Server running on port ${PORT}`));

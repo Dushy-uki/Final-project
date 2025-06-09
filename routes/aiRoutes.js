@@ -7,3 +7,4 @@ const router = express.Router();
 router.post('/resume-update', authenticate, updateResume);
 
 export default router;
+
