@@ -1,10 +1,10 @@
 import express from 'express';
-import { createResume, getUserResume } from '../controllers/resumeController.js';
+import { generateAndDownloadResume } from '../controllers/generateResumeController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', verifyToken, createResume);
-router.get('/', verifyToken, getUserResume);
+// POST /api/resume/download
+router.post('/download', verifyToken, generateAndDownloadResume);
 
 export default router;

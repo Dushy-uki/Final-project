@@ -19,11 +19,12 @@ import userRoutes from './routes/userRoutes.js';
 
 import adminRoutes from './routes/adminRoutes.js';
 
-
-
+import resumeRoutes from './routes/resumeRoutes.js';
+app.use('/api/resume', resumeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+
 
 // Basic Route
 app.get('/', (req, res) => {
