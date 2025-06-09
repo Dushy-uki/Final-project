@@ -1,4 +1,7 @@
 // controllers/generateResumeController.js
+"use server";
+import dotenv from "dotenv";
+dotenv.config();
 import PDFDocument from 'pdfkit';
 import { OpenAI } from 'openai';
 
