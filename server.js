@@ -22,6 +22,8 @@ import adminRoutes from './routes/adminRoutes.js';
 import resumeRoutes from './routes/resumeRoutes.js';
 
 import jobRoutes from './routes/jobRoutes.js';
+
+
 app.use('/api/jobs', jobRoutes);
 app.use('/api/resume', resumeRoutes);
 app.use('/api/users', userRoutes);

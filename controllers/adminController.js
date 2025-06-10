@@ -1,4 +1,19 @@
 import User from '../models/user.js';
+import Job from "../models/Job.js";
+import Application from "../models/applicationModel.js";
+
+
+// Create a new user (or any other item)
+export const createUser = async (req, res) => {
+  const { name, email, password  } = req.body;
+  try {
+    const newUser = new User({ name, email, password });
+    await newUser.save();
+    res.status(201).json({ message: 'User created successfully', user: newUser });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+};
 
 // Get all users (Admin only)
 export const getAllUsers = async (req, res) => {
@@ -46,5 +61,22 @@ export const deleteUser = async (req, res) => {
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const totalJobs = await Job.countDocuments();
+    const totalApplications = await Application.countDocuments();
+
+    res.status(200).json({
+      totalUsers,
+      totalJobs,
+      totalApplications,
+    });
+  } catch (error) {
+    console.error("Dashboard Stats Error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
   }
 };

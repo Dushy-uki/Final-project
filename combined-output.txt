@@ -3,6 +3,21 @@
 // ===== controllers/adminController.js =====
 
 import User from '../models/user.js';
+import Job from "../models/Job.js";
+import Application from "../models/applicationModel.js";
+
+
+// Create a new user (or any other item)
+export const createUser = async (req, res) => {
+  const { name, email, password  } = req.body;
+  try {
+    const newUser = new User({ name, email, password });
+    await newUser.save();
+    res.status(201).json({ message: 'User created successfully', user: newUser });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+};
 
 // Get all users (Admin only)
 export const getAllUsers = async (req, res) => {
@@ -50,6 +65,88 @@ export const deleteUser = async (req, res) => {
     res.status(200).json({ message: 'User deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const totalJobs = await Job.countDocuments();
+    const totalApplications = await Application.countDocuments();
+
+    res.status(200).json({
+      totalUsers,
+      totalJobs,
+      totalApplications,
+    });
+  } catch (error) {
+    console.error("Dashboard Stats Error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+};
+
+
+// ===== controllers/applicationController.js =====
+
+// controllers/applicationController.js
+import Application from '../models/applicationModel.js';
+import Job from '../models/Job.js';
+
+export const applyForJob = async (req, res) => {
+  try {
+    const { message, resumeUrl } = req.body;
+    const jobId = req.params.id;
+    const userId = req.user.id;
+
+    const existingApp = await Application.findOne({ job: jobId, applicant: userId });
+    if (existingApp) {
+      return res.status(400).json({ error: "You already applied for this job." });
+    }
+
+    const application = await Application.create({
+      job: jobId,
+      applicant: userId,
+      resumeUrl,
+      message,
+    });
+
+    res.status(201).json({ message: "Application submitted", application });
+  } catch (err) {
+    console.error("Apply error:", err);
+    res.status(500).json({ error: "Failed to apply for job" });
+  }
+};
+
+export const getAllApplications = async (req, res) => {
+  try {
+    const applications = await Application.find()
+      .populate('applicant', 'name email')
+      .populate('job', 'title');
+
+    res.status(200).json(applications);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch applications" });
+  }
+};
+
+export const updateApplicationStatus = async (req, res) => {
+  const { status } = req.body;
+  const { id } = req.params;
+
+  try {
+    const application = await Application.findByIdAndUpdate(
+      id,
+      { status },
+      { new: true }
+    );
+
+    if (!application) {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    res.status(200).json({ message: "Status updated", application });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update application" });
   }
 };
 
@@ -163,7 +260,7 @@ export const generateAndDownloadResume = async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
@@ -178,13 +275,55 @@ export const generateAndDownloadResume = async (req, res) => {
     doc.pipe(res);
     doc.fontSize(12).text(resumeText, { align: 'left' });
     doc.end();
-
   } catch (error) {
     console.error('Resume generation error:', error);
-    res.status(500).json({ error: 'Failed to generate resume' });
+
+    if (error.status === 429 || error.code === 'insufficient_quota') {
+      // fallback resume content
+      const fallbackResume = `Resume for ${name}
+Email: ${email}
+Skills: ${skills.join(', ')}
+Experience: ${experience}
+Education: ${education}`;
+
+      const filename = `resume_${name.trim().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/pdf');
+
+      const doc = new PDFDocument();
+      doc.pipe(res);
+      doc.fontSize(12).text(fallbackResume, { align: 'left' });
+      doc.end();
+    } else {
+      res.status(500).json({ error: 'Failed to generate resume' });
+    }
   }
 };
 
+
+const generateResumePDF = (req, res) => {
+  const { name, email, skills, experience, education } = req.body;
+
+  const doc = new PDFDocument();
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", "attachment; filename=resume.pdf");
+
+  doc.pipe(res);
+
+  doc.fontSize(20).text(`Resume for ${name}`, { underline: true });
+  doc.moveDown();
+  doc.fontSize(14).text(`Email: ${email}`);
+  doc.moveDown();
+  doc.text(`Skills: ${skills}`);
+  doc.moveDown();
+  doc.text(`Experience: ${experience}`);
+  doc.moveDown();
+  doc.text(`Education: ${education}`);
+
+  doc.end();
+};
+
+export default generateResumePDF;
 
 // ===== controllers/jobController.js =====
 
@@ -226,25 +365,6 @@ export const applyForJob = async (req, res) => {
 };
 
 
-// ===== controllers/userController.js =====
-
-import User from '../models/user.js';
-
-// Create a new user (or any other item)
-export const createUser = async (req, res) => {
-  const { name, email, password  } = req.body;
-  try {
-    const newUser = new User({ name, email, password });
-    await newUser.save();
-    res.status(201).json({ message: 'User created successfully', user: newUser });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to create user' });
-  }
-};
-
-
-
-
 // ===== models/Job.js =====
 
 import mongoose from 'mongoose';
@@ -259,6 +379,43 @@ const jobSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export default mongoose.model('Job', jobSchema);
+
+
+// ===== models/applicationModel.js =====
+
+// models/applicationModel.js
+
+import mongoose from "mongoose";
+
+const applicationSchema = new mongoose.Schema(
+  {
+    job: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Job",
+      required: true,
+    },
+    applicant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    resumeUrl: {
+      type: String, // if you're storing a resume file or link
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+    message: {
+      type: String, // optional message from applicant
+    },
+  },
+  { timestamps: true }
+);
+
+const Application = mongoose.model("Application", applicationSchema);
+export default Application;
 
 
 // ===== models/user.js =====
@@ -286,6 +443,8 @@ export default mongoose.model('User', userSchema);
 import express from 'express';
 import { getAllUsers, updateUser, deleteUser } from '../controllers/adminController.js';
 import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
+import { getDashboardStats } from "../controllers/adminController.js";
+
 
 const router = express.Router();
 
@@ -293,6 +452,24 @@ const router = express.Router();
 router.get('/', verifyToken, isAdmin, getAllUsers);
 router.put('/:id', verifyToken, isAdmin, updateUser);
 router.delete('/:id', verifyToken, isAdmin, deleteUser);
+router.get("/dashboard-stats", verifyToken, isAdmin, getDashboardStats);
+
+export default router;
+
+
+
+// ===== routes/applicationRoutes.js =====
+
+// routes/applicationRoutes.js
+import express from "express";
+import { applyForJob, getAllApplications, updateApplicationStatus } from "../controllers/applicationController.js";
+import { verifyToken, isAdmin } from "../middleware/authMiddleware.js";
+
+const router = express.Router();
+
+router.post("/apply/:id", verifyToken, applyForJob);         // Apply to job
+router.get("/", verifyToken, isAdmin, getAllApplications);   // Admin: view all
+router.put("/:id", verifyToken, isAdmin, updateApplicationStatus); // Admin: change status
 
 export default router;
 
@@ -334,7 +511,7 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // POST /api/resume/download
-router.post('/download', verifyToken, generateAndDownloadResume);
+router.post('/', verifyToken, generateAndDownloadResume);
 
 export default router;
 
@@ -342,7 +519,7 @@ export default router;
 // ===== routes/userRoutes.js =====
 
 import express from 'express';
-import { createUser } from '../controllers/userController.js';
+import { createUser } from '../controllers/adminController.js';
 const router = express.Router();
 
 router.post('/', createUser); // POST /api/users
@@ -394,6 +571,10 @@ import adminRoutes from './routes/adminRoutes.js';
 import resumeRoutes from './routes/resumeRoutes.js';
 
 import jobRoutes from './routes/jobRoutes.js';
+
+import applicationRoutes from './routes/applicationRoutes.js';
+
+app.use('/api/applications', applicationRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/resume', resumeRoutes);
 app.use('/api/users', userRoutes);
