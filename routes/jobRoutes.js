@@ -1,12 +1,14 @@
+// routes/jobRoutes.js
 import express from 'express';
-import { postJob, getAllJobs, applyForJob } from '../controllers/jobController.js';
+import { postJob, getAllJobs } from '../controllers/jobController.js';
 import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
-import { updateApplicationStatus} from '../controllers/jobController.js';
+
 const router = express.Router();
 
-router.get('/', verifyToken, getAllJobs);             // Anyone can see all jobs
-router.post('/', verifyToken, isAdmin, postJob);       // Only admin can post
-router.post('/apply/:id', verifyToken, applyForJob);   // User applies to job
-router.patch('/:id/status', verifyToken, isAdmin, updateApplicationStatus); // Admin updates
+// Admin can post a job
+router.post('/', verifyToken, isAdmin, postJob);
+
+// Anyone logged in can see jobs
+router.get('/', verifyToken, getAllJobs);
 
 export default router;

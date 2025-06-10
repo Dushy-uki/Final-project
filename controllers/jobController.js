@@ -1,5 +1,5 @@
+// controllers/jobController.js
 import Job from '../models/Job.js';
-import Application from '../models/applicationModel.js';
 
 export const postJob = async (req, res) => {
   try {
@@ -19,41 +19,23 @@ export const getAllJobs = async (req, res) => {
   }
 };
 
-export const applyForJob = async (req, res) => {
-  try {
-    const job = await Job.findById(req.params.id);
-    if (!job) return res.status(404).json({ error: 'Job not found' });
+// export const updateApplicationStatus = async (req, res) => {
+//   const { status } = req.body;
+//   const { id } = req.params;
 
-    if (job.applicants.includes(req.user.id)) {
-      return res.status(400).json({ error: 'Already applied' });
-    }
+//   try {
+//     const application = await Application.findByIdAndUpdate(
+//       id,
+//       { status },
+//       { new: true }
+//     );
 
-    job.applicants.push(req.user.id);
-    await job.save();
-    res.status(200).json({ message: 'Applied successfully' });
-  } catch (err) {
-    res.status(500).json({ error: 'Error applying for job' });
-  }
-};
+//     if (!application) {
+//       return res.status(404).json({ error: "Application not found" });
+//     }
 
-
-export const updateApplicationStatus = async (req, res) => {
-  const { status } = req.body;
-  const { id } = req.params;
-
-  try {
-    const application = await Application.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
-
-    if (!application) {
-      return res.status(404).json({ error: "Application not found" });
-    }
-
-    res.status(200).json({ message: "Status updated", application });
-  } catch (err) {
-    res.status(500).json({ error: "Failed to update application" });
-  }
-};
+//     res.status(200).json({ message: "Status updated", application });
+//   } catch (err) {
+//     res.status(500).json({ error: "Failed to update application" });
+//   }
+// };
