@@ -5,6 +5,6 @@ import { verifyToken } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // POST /api/resume/download
-router.post('/download', verifyToken, generateAndDownloadResume);
+router.post('/', verifyToken, generateAndDownloadResume);
 
 export default router;

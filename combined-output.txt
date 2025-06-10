@@ -54,37 +54,6 @@ export const deleteUser = async (req, res) => {
 };
 
 
-// ===== controllers/aiController.js =====
-
-
-export const updateResume = (req, res) => {
-  const { jobTitle, tasks, duration, feedback } = req.body;
-  const resumeContent = `Worked as ${jobTitle} for ${duration}. Tasks: ${tasks}. Feedback: ${feedback}`;
-  res.status(200).json({ resumeContent });
-};
- 
-// controllers/resumeController.js
-import Resume from '../models/resume.js';
-
-export const createResume = async (req, res) => {
-  try {
-    const resume = await Resume.create({ ...req.body, user: req.user.id });
-    res.status(201).json(resume);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to create resume' });
-  }
-};
-
-export const getUserResume = async (req, res) => {
-  try {
-    const resume = await Resume.findOne({ user: req.user.id });
-    res.status(200).json(resume);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch resume' });
-  }
-};
-
-
 // ===== controllers/auth.js =====
 
 import jwt from 'jsonwebtoken';
@@ -167,24 +136,93 @@ export const login = async (req, res) => {
 };
 
 
-// ===== controllers/jobController.js =====
+// ===== controllers/generateResumeController.js =====
 
+// controllers/generateResumeController.js
+"use server";
+import dotenv from "dotenv";
+dotenv.config();
+import PDFDocument from 'pdfkit';
+import { OpenAI } from 'openai';
 
-import Job from '../models/Job.js';
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export const createJob = async (req, res) => {
+export const generateAndDownloadResume = async (req, res) => {
+  const { name, email, skills, experience, education } = req.body;
+
+  if (!name || !skills || !experience || !education) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const prompt = `Create a professional resume for:
+  Name: ${name}
+  Email: ${email}
+  Skills: ${skills.join(', ')}
+  Experience: ${experience}
+  Education: ${education}`;
+
   try {
-    const job = new Job({ ...req.body, postedBy: req.user.id });
-    await job.save();
-    res.status(201).json({ message: 'Job posted successfully' });
-  } catch (err) {
-    res.status(400).json({ error: 'Validation error' });
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+    });
+
+    const resumeText = completion.choices[0].message.content;
+
+    const filename = `resume_${name.replace(/\s+/g, '_')}.pdf`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/pdf');
+
+    const doc = new PDFDocument();
+    doc.pipe(res);
+    doc.fontSize(12).text(resumeText, { align: 'left' });
+    doc.end();
+
+  } catch (error) {
+    console.error('Resume generation error:', error);
+    res.status(500).json({ error: 'Failed to generate resume' });
   }
 };
 
-export const applyJob = async (req, res) => {
-  // mock implementation
-  res.status(200).json({ message: 'Application submitted (mock)' });
+
+// ===== controllers/jobController.js =====
+
+import Job from '../models/Job.js';
+
+export const postJob = async (req, res) => {
+  try {
+    const job = await Job.create({ ...req.body, postedBy: req.user.id });
+    res.status(201).json(job);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error while posting job' });
+  }
+};
+
+export const getAllJobs = async (req, res) => {
+  try {
+    const jobs = await Job.find().populate('postedBy', 'name email');
+    res.status(200).json(jobs);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching jobs' });
+  }
+};
+
+export const applyForJob = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    if (job.applicants.includes(req.user.id)) {
+      return res.status(400).json({ error: 'Already applied' });
+    }
+
+    job.applicants.push(req.user.id);
+    await job.save();
+    res.status(200).json({ message: 'Applied successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error applying for job' });
+  }
 };
 
 
@@ -212,58 +250,15 @@ export const createUser = async (req, res) => {
 import mongoose from 'mongoose';
 
 const jobSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  company: { type: String, required: true },
-  description: { type: String },
-  location: { type: String },
-  type: { type: String }, 
-  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now },
-});
+  title: String,
+  description: String,
+  location: String,
+  salary: String,
+  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Admin
+  applicants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Users who applied
+}, { timestamps: true });
 
-const Job = mongoose.model('Job', jobSchema);
-
-export default Job;
-
-
-// ===== models/resume.js =====
-
-// models/resume.js
-import mongoose from 'mongoose';
-
-const resumeSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-  },
-  fullName: String,
-  email: String,
-  phone: String,
-  education: [
-    {
-      institution: String,
-      degree: String,
-      year: String,
-    },
-  ],
-  experience: [
-    {
-      company: String,
-      role: String,
-      duration: String,
-      description: String,
-    },
-  ],
-  skills: [String],
-  summary: String,
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-export default mongoose.model('Resume', resumeSchema);
+export default mongoose.model('Job', jobSchema);
 
 
 // ===== models/user.js =====
@@ -302,20 +297,6 @@ router.delete('/:id', verifyToken, isAdmin, deleteUser);
 export default router;
 
 
-// ===== routes/aiRoutes.js =====
-
-
-import express from 'express';
-import { updateResume } from '../controllers/aiController.js';
-import { authenticate } from '../middleware/authMiddleware.js';
-
-const router = express.Router();
-router.post('/resume-update', authenticate, updateResume);
-
-export default router;
-
-
-
 // ===== routes/authRoutes.js =====
 
 import express from 'express';
@@ -331,16 +312,15 @@ export default router;
 
 // ===== routes/jobRoutes.js =====
 
-// routes/jobRoutes.js
 import express from 'express';
-import { authenticate } from '../middleware/authMiddleware.js';
-import { authorizeRoles } from '../middleware/roleMiddleware.js';
-import { createJob, applyJob } from '../controllers/jobController.js';
+import { postJob, getAllJobs, applyForJob } from '../controllers/jobController.js';
+import { verifyToken, isAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/admin/jobs', authenticate, authorizeRoles('admin'), createJob);
-router.post('/jobs/:id/apply', authenticate, authorizeRoles('student'), applyJob);
+router.get('/', verifyToken, getAllJobs);             // Anyone can see all jobs
+router.post('/', verifyToken, isAdmin, postJob);       // Only admin can post
+router.post('/apply/:id', verifyToken, applyForJob);   // User applies to job
 
 export default router;
 
@@ -348,15 +328,16 @@ export default router;
 // ===== routes/resumeRoutes.js =====
 
 import express from 'express';
-import { createResume, getUserResume } from '../controllers/resumeController.js';
+import { generateAndDownloadResume } from '../controllers/generateResumeController.js';
 import { verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/', verifyToken, createResume);
-router.get('/', verifyToken, getUserResume);
+// POST /api/resume/download
+router.post('/download', verifyToken, generateAndDownloadResume);
 
 export default router;
+
 
 // ===== routes/userRoutes.js =====
 
@@ -410,11 +391,15 @@ import userRoutes from './routes/userRoutes.js';
 
 import adminRoutes from './routes/adminRoutes.js';
 
+import resumeRoutes from './routes/resumeRoutes.js';
 
-
+import jobRoutes from './routes/jobRoutes.js';
+app.use('/api/jobs', jobRoutes);
+app.use('/api/resume', resumeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+
 
 // Basic Route
 app.get('/', (req, res) => {

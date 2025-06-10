@@ -23,7 +23,7 @@ export const generateAndDownloadResume = async (req, res) => {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
@@ -38,9 +38,52 @@ export const generateAndDownloadResume = async (req, res) => {
     doc.pipe(res);
     doc.fontSize(12).text(resumeText, { align: 'left' });
     doc.end();
-
   } catch (error) {
     console.error('Resume generation error:', error);
-    res.status(500).json({ error: 'Failed to generate resume' });
+
+    if (error.status === 429 || error.code === 'insufficient_quota') {
+      // fallback resume content
+      const fallbackResume = `Resume for ${name}
+Email: ${email}
+Skills: ${skills.join(', ')}
+Experience: ${experience}
+Education: ${education}`;
+
+      const filename = `resume_${name.trim().replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/pdf');
+
+      const doc = new PDFDocument();
+      doc.pipe(res);
+      doc.fontSize(12).text(fallbackResume, { align: 'left' });
+      doc.end();
+    } else {
+      res.status(500).json({ error: 'Failed to generate resume' });
+    }
   }
 };
+
+
+const generateResumePDF = (req, res) => {
+  const { name, email, skills, experience, education } = req.body;
+
+  const doc = new PDFDocument();
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", "attachment; filename=resume.pdf");
+
+  doc.pipe(res);
+
+  doc.fontSize(20).text(`Resume for ${name}`, { underline: true });
+  doc.moveDown();
+  doc.fontSize(14).text(`Email: ${email}`);
+  doc.moveDown();
+  doc.text(`Skills: ${skills}`);
+  doc.moveDown();
+  doc.text(`Experience: ${experience}`);
+  doc.moveDown();
+  doc.text(`Education: ${education}`);
+
+  doc.end();
+};
+
+export default generateResumePDF;
