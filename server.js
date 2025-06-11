@@ -26,6 +26,9 @@ import jobRoutes from './routes/jobRoutes.js';
 
 import applicationRoutes from './routes/applicationRoutes.js';
 
+import paymentRoutes from './routes/paymentRoutes.js';
+
+app.use('/api/payment', paymentRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/resume', resumeRoutes);
