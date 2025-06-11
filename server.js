@@ -37,6 +37,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 
 
+import fs from 'fs';
+import path from 'path';
+
+const uploadDir = path.join('uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+
 // Basic Route
 app.get('/', (req, res) => {
   res.send('Time Pro API is running...');
