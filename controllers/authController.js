@@ -52,3 +52,21 @@ export const login = async (req, res) => {
     res.status(500).json({ error: 'Login failed' });
   }
 };
+
+
+export const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await User.findByIdAndUpdate(decoded.id, { password: hashed });
+
+    res.status(200).json({ message: 'Password reset successful' });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: 'Invalid or expired token' });
+  }
+};
