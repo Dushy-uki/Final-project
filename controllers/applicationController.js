@@ -1,6 +1,8 @@
 // controllers/applicationController.js
 import Job from '../models/Job.js';
 import Application from '../models/applicationModel.js';
+import User from '../models/user.js';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
 // USER: Apply for a Job (with file upload)
 export const applyToJob = async (req, res) => {
@@ -84,5 +86,59 @@ export const updateApplicationStatus = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update application' });
+  }
+};
+
+// USER: Get own applications
+export const getMyApplications = async (req, res) => {
+  try {
+    const applications = await Application.find({ applicant: req.user.id })
+      .populate('job', 'title company location deadline') // show job info
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(applications);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error fetching your applications' });
+  }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/users/profile
+// @access  Private
+// controllers/userController.js
+export const updateUserProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id); // Get user by ID from params
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Update fields from body
+    user.name = req.body.name || user.name;
+    user.email = req.body.email || user.email;
+    user.skills = req.body.skills || user.skills;
+    user.bio = req.body.bio || user.bio;
+
+    // ✅ Handle uploaded profile image (Cloudinary URL is in req.file.path)
+    if (req.file && req.file.path) {
+      user.avatar = req.file.path; // Cloudinary public URL
+    }
+
+    const updatedUser = await user.save();
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        skills: updatedUser.skills,
+        bio: updatedUser.bio,
+        avatar: updatedUser.avatar, // Cloudinary image URL
+        role: updatedUser.role,
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Profile update failed' });
   }
 };

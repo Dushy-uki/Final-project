@@ -1,9 +1,8 @@
 import express from 'express';
-import { generateAndDownloadResume } from '../controllers/generateResumeController.js';
+import { generateResume } from '../controllers/generateResumeController.js';
 
 const router = express.Router();
 
-// POST /api/resume/download
-router.post('/generate', generateAndDownloadResume);
+router.post('/generate', generateResume);
 
 export default router;

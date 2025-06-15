@@ -28,6 +28,10 @@ import applicationRoutes from './routes/applicationRoutes.js';
 
 import paymentRoutes from './routes/paymentRoutes.js';
 
+import groqRoutes from './routes/groqRoutes.js';
+// Groq AI Chat Route
+app.use('/api/groq', groqRoutes);
+
 app.use('/api/payment', paymentRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/jobs', jobRoutes);

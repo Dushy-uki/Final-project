@@ -1,72 +1,80 @@
-// controllers/generateResumeController.js
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import { writeFileSync } from "fs";
-import PDFDocument from "pdfkit";
-import { OpenAI } from "openai";
-import dotenv from "dotenv";
+import axios from 'axios';
+import dotenv from 'dotenv';
+import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
 
 dotenv.config();
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+export const generateResume = async (req, res) => {
+  try {
+    const { name, email, phone, skills, experience, education } = req.body;
 
-export const generateAndDownloadResume = async (req, res) => {
-  const { name, email, phone, address, summary, skills, experience, education, projects, format } = req.body;
+    if (!name || !skills || !experience || !education) {
+      return res.status(400).json({ error: 'Missing required resume fields' });
+    }
 
-  if (!name || !skills || !experience || !education) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
+    const prompt = `
+You are a professional resume writer. Based on the details below, generate a polished resume in plain text format:
 
-  const prompt = `Generate a professional resume for the following details:
 Name: ${name}
 Email: ${email}
 Phone: ${phone}
-Address: ${address}
-Summary: ${summary}
 Skills: ${skills.join(', ')}
-Experience: ${experience.map(e => `${e.title} at ${e.company} (${e.duration}) - ${e.description}`).join('; ')}
-Education: ${education.map(ed => `${ed.degree} at ${ed.institution} (${ed.year})`).join('; ')}
-Projects: ${projects.map(p => `${p.title} - ${p.description}`).join('; ')}`;
+Experience: ${experience}
+Education: ${education}
 
-  try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
+Write it in a clean, professional tone.
+`;
+
+    const response = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: 'llama3-70b-8192',
+        messages: [
+          { role: 'system', content: 'You are an AI that generates professional resumes.' },
+          { role: 'user', content: prompt }
+        ]
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+        }
+      }
+    );
+
+    const resumeText = response.data.choices[0].message.content;
+
+
+    // ✅ Ensure the 'resumes' directory exists
+const resumeDir = path.join('resumes');
+if (!fs.existsSync(resumeDir)) {
+  fs.mkdirSync(resumeDir);
+}
+
+    // ✅ Generate PDF
+    const doc = new PDFDocument();
+    const filePath = path.join('resumes', `${name.replace(/\s+/g, '_')}_resume.pdf`);
+    const writeStream = fs.createWriteStream(filePath);
+    doc.pipe(writeStream);
+    doc.fontSize(12).text(resumeText, { align: 'left' });
+    doc.end();
+
+    writeStream.on('finish', () => {
+      res.download(filePath, `${name}_resume.pdf`, err => {
+        if (err) {
+          console.error('Download error:', err);
+        }
+        // Clean up file after sending
+        fs.unlink(filePath, () => {});
+      });
     });
 
-    const resumeText = completion.choices[0].message.content;
-
-    const filenameBase = `resume_${name.trim().replace(/\s+/g, '_')}`;
-
-    if (format === "pdf") {
-      const filename = `${filenameBase}.pdf`;
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.setHeader("Content-Type", "application/pdf");
-
-      const doc = new PDFDocument();
-      doc.pipe(res);
-      doc.fontSize(12).text(resumeText, { align: "left" });
-      doc.end();
-    } else if (format === "docx") {
-      const doc = new Document({
-        sections: [
-          {
-            properties: {},
-            children: [new Paragraph({ children: [new TextRun(resumeText)] })],
-          },
-        ],
-      });
-
-      const buffer = await Packer.toBuffer(doc);
-      const filename = `${filenameBase}.docx`;
-      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-      res.send(buffer);
-    } else {
-      return res.status(400).json({ error: "Invalid format specified" });
-    }
   } catch (error) {
-    console.error("Resume generation failed:", error);
-    res.status(500).json({ error: "Resume generation failed" });
+    console.error('Resume generation failed:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      error: error.response?.data?.error?.message || error.message
+    });
   }
 };
