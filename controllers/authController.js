@@ -2,6 +2,8 @@
 import User from '../models/user.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { loginSuccessTemplate } from '../models/resetTemplate.js';
+import { sendEmail } from '../ utils/email.js';
 
 export const register = async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -43,12 +45,26 @@ export const login = async (req, res) => {
       { expiresIn: '1d' }
     );
 
+    // ✅ Send the response first
     res.status(200).json({
       message: 'Login successful',
       token
     });
+
+    // ✅ Then send email (asynchronously, after response)
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Login Successful - TimePro',
+        html: loginSuccessTemplate(user.name),
+      });
+    } catch (emailErr) {
+      console.error('Login email send error:', emailErr);
+      // Optional: do not return error to client
+    }
+
   } catch (err) {
-    console.error('Login error:', err); // 👈 Helpful for debugging
+    console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 };
@@ -70,3 +86,4 @@ export const resetPassword = async (req, res) => {
     res.status(400).json({ error: 'Invalid or expired token' });
   }
 };
+

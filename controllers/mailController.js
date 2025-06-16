@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 import User from '../models/user.js';
 import { sendEmail } from '../ utils/email.js';
 import { resetPasswordTemplate } from '../models/resetTemplate.js';
-  
 export const forgotPassword = async (req, res) => {
   console.log('Forgot password called, body:', req.body);
   const { email } = req.body;
@@ -39,3 +38,4 @@ export const forgotPassword = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
