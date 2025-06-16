@@ -30,12 +30,4 @@ router.patch('/:id/status', verifyToken, isAdmin, updateApplicationStatus);
 router.get('/my', verifyToken,getMyApplications );
 
 
-router.post(
-  '/apply/:jobId',
-  verifyToken,
-  uploadResume.single('resume'), // field name must match Postman/form name
-  applyToJob
-);
-
-
 export default router;

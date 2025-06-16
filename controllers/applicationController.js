@@ -103,10 +103,7 @@ export const getMyApplications = async (req, res) => {
   }
 };
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
-// controllers/userController.js
+// USER: Update own profile
 export const updateUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.params.id); // Get user by ID from params

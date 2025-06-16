@@ -12,6 +12,7 @@ router.get('/', verifyToken, isAdmin, getAllUsers);
 router.put('/:id', verifyToken, isAdmin, updateUser);
 router.delete('/:id', verifyToken, isAdmin, deleteUser);
 router.get("/dashboard-stats", verifyToken, isAdmin, getDashboardStats);
+router.get('/dashboard', verifyToken, getDashboardStats); 
 
 export default router;
 
