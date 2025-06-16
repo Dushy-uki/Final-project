@@ -87,3 +87,9 @@ export const resetPassword = async (req, res) => {
   }
 };
 
+export const logoutUser = (req, res) => {
+  // Just send success - actual logout is done on client side
+  res.status(200).json({ message: 'Logout successful' });
+};
+
+
