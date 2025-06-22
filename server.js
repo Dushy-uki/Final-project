@@ -47,6 +47,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 
 
+app.use(cors({
+  origin: 'http://localhost:5173', // frontend URL
+  credentials: true, // cookies use pannina this is needed
+}));
+
+
+
 import fs from 'fs';
 import path from 'path';
 

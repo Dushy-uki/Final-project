@@ -19,8 +19,8 @@ export const register = async (req, res) => {
 
     res.status(201).json({ message: 'Registration successful' });
   } catch (err) {
-    console.error('Register error:', err.message); // ✅ Add this line for debugging
-    res.status(500).json({ error: 'Server error' }); // ✅ Keep this response
+    console.error('Register error:', err.message); //  Add this line for debugging
+    res.status(500).json({ error: 'Server error' }); //  Keep this response
   }
 };
 
@@ -45,13 +45,20 @@ export const login = async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    // ✅ Send the response first
+    
     res.status(200).json({
       message: 'Login successful',
-      token
+      token,
+        role: user.role, // <--- ADD THIS IF NEEDED
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
     });
 
-    // ✅ Then send email (asynchronously, after response)
+    
     try {
       await sendEmail({
         to: user.email,

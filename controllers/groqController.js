@@ -4,11 +4,11 @@ dotenv.config();
 export const chatWithGroq = async (req, res) => {
   try {
     const { model, messages } = req.body;
-    // :white_check_mark: Input validation
+    
     if (!model || !Array.isArray(messages) || !messages[0]?.content) {
       return res.status(400).json({ error: 'Model and valid messages are required' });
     }
-    // :white_check_mark: Call Groq API
+   
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
@@ -22,7 +22,7 @@ export const chatWithGroq = async (req, res) => {
         }
       }
     );
-    // :white_check_mark: Send Groq's response to the client
+    
     res.json(response.data);
   } catch (error) {
     console.error('Groq API Error:', error.response?.data || error.message);

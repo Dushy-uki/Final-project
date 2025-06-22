@@ -76,7 +76,7 @@ export const getDashboardStats = async (req, res) => {
       totalApplications,
     });
   } catch (error) {
-    console.error("Dashboard Stats Error:", error);
-    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    console.error('Dashboard Stats Error:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 };
