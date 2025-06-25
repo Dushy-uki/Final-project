@@ -19,6 +19,8 @@ app.use(session({ secret: 'secretkey', resave: false, saveUninitialized: false }
 app.use(passport.initialize());
 app.use(passport.session());
 
+
+
 import userRoutes from './routes/userRoutes.js';
 
 import adminRoutes from './routes/adminRoutes.js';
@@ -34,9 +36,8 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import groqRoutes from './routes/groqRoutes.js';
 
 import googleRoutes from './routes/authRoutes.js';
-app.use('/api/auth', googleRoutes);
 
-// Groq AI Chat Route
+app.use('/api/auth', googleRoutes);
 app.use('/api/groq', groqRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/applications', applicationRoutes);
@@ -45,6 +46,7 @@ app.use('/api/resume', resumeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/uploads', express.static('uploads'));
 
 
 app.use(cors({

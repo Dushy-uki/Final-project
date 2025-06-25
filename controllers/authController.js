@@ -51,10 +51,13 @@ export const login = async (req, res) => {
       token,
         role: user.role, // <--- ADD THIS IF NEEDED
       user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+            _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    skills: user.skills,   // Add these
+    bio: user.bio,
+    avatar: user.avatar,
       }
     });
 

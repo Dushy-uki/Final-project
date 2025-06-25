@@ -47,13 +47,13 @@ Write it in a clean, professional tone.
     const resumeText = response.data.choices[0].message.content;
 
 
-    // ✅ Ensure the 'resumes' directory exists
+    // Ensure the 'resumes' directory exists
 const resumeDir = path.join('resumes');
 if (!fs.existsSync(resumeDir)) {
   fs.mkdirSync(resumeDir);
 }
 
-    // ✅ Generate PDF
+    // Generate PDF
     const doc = new PDFDocument();
     const filePath = path.join('resumes', `${name.replace(/\s+/g, '_')}_resume.pdf`);
     const writeStream = fs.createWriteStream(filePath);

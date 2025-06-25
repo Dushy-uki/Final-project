@@ -12,12 +12,28 @@ export const postJob = async (req, res) => {
 
 export const getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find().populate('postedBy', 'name email');
-    res.status(200).json(jobs);
+    const page = parseInt(req.query.page) || 1;      // Current page (default 1)
+    const limit = parseInt(req.query.limit) || 6;     // Jobs per page (default 6)
+
+    const jobs = await Job.find()
+      .populate('postedBy', 'name email')            // Keep your population
+      .sort({ createdAt: -1 })                       // Latest jobs first
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const totalJobs = await Job.countDocuments();     // For total page count
+
+    res.status(200).json({
+      jobs,
+      totalPages: Math.ceil(totalJobs / limit),
+      currentPage: page,
+    });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error fetching jobs' });
   }
 };
+
 
 export const updateJob = async (req, res) => {
   try {

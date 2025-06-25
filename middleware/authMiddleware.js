@@ -25,4 +25,9 @@ export const isAdmin = (req, res, next) => {
     return next();
   }
   return res.status(403).json({ error: 'Access denied: Admins only' });
+  
 };
+
+
+
+

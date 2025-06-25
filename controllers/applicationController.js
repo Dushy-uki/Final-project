@@ -48,21 +48,23 @@ export const applyToJob = async (req, res) => {
   }
 };
 
-// ADMIN: Get all applications
-export const getAllApplications = async (req, res) => {
+// GET applications for a specific job
+export const getApplicationsByJob = async (req, res) => {
   try {
-    const applications = await Application.find()
-      .populate('job', 'title')
+    const { jobId } = req.params;
+
+    const applications = await Application.find({ job: jobId })
       .populate('applicant', 'name email');
 
     res.status(200).json(applications);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error fetching applications' });
+    res.status(500).json({ error: 'Error fetching applications for this job' });
   }
 };
 
-// ADMIN: Update application status
+
+//  ADMIN: Update application status
 export const updateApplicationStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -89,12 +91,12 @@ export const updateApplicationStatus = async (req, res) => {
   }
 };
 
-// USER: Get own applications
+
 export const getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ applicant: req.user.id })
-      .populate('job', 'title company location deadline') // show job info
-      .sort({ createdAt: -1 });
+      .populate('job', 'title company location deadline') //  includes job info
+      .sort({ createdAt: -1 }); //  latest first
 
     res.status(200).json(applications);
   } catch (err) {
@@ -102,6 +104,7 @@ export const getMyApplications = async (req, res) => {
     res.status(500).json({ error: 'Error fetching your applications' });
   }
 };
+
 
 // USER: Update own profile
 export const updateUserProfile = async (req, res) => {
@@ -115,10 +118,9 @@ export const updateUserProfile = async (req, res) => {
     user.skills = req.body.skills || user.skills;
     user.bio = req.body.bio || user.bio;
 
-    // ✅ Handle uploaded profile image (Cloudinary URL is in req.file.path)
-    if (req.file && req.file.path) {
-      user.avatar = req.file.path; // Cloudinary public URL
-    }
+    //  Handle uploaded profile image (Cloudinary URL is in req.file.path)
+    if (user.avatar = `http://localhost:5000/${req.file.path}`); // if serving static files
+
 
     const updatedUser = await user.save();
 
