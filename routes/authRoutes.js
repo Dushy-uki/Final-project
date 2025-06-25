@@ -25,7 +25,7 @@ router.get('/google/callback',
     );
 
     // You can also store token in cookie here
-    res.redirect(`http://localhost:3000/google-success?token=${token}`);
+    res.redirect(`http://localhost:5173/google-success?token=${token}`);
   }
 );
 
