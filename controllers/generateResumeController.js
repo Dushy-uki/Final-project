@@ -1,80 +1,78 @@
+import Resume from '../models/Resume.js';
 import axios from 'axios';
-import dotenv from 'dotenv';
-import PDFDocument from 'pdfkit';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+import { exec } from 'child_process';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export const generateResume = async (req, res) => {
-  try {
-    const { name, email, phone, skills, experience, education } = req.body;
+export const generateResumeWithGroq = async (req, res) => {
+  const { userId, name, email, phone, skills, experience, education } = req.body;
 
-    if (!name || !skills || !experience || !education) {
-      return res.status(400).json({ error: 'Missing required resume fields' });
-    }
-
-    const prompt = `
-You are a professional resume writer. Based on the details below, generate a polished resume in plain text format:
-
+  const prompt = `
+Generate a resume in JSON Resume format (https://jsonresume.org). Use this info:
 Name: ${name}
 Email: ${email}
 Phone: ${phone}
 Skills: ${skills.join(', ')}
 Experience: ${experience}
 Education: ${education}
-
-Write it in a clean, professional tone.
+Return only valid JSON, no markdown or extra text.
 `;
 
+  try {
     const response = await axios.post(
-      'https://api.groq.com/openai/v1/chat/completions',
+      'https://api.groq.com/v1/chat/completions',
       {
         model: 'llama3-70b-8192',
-        messages: [
-          { role: 'system', content: 'You are an AI that generates professional resumes.' },
-          { role: 'user', content: prompt }
-        ]
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7
       },
       {
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          'Content-Type': 'application/json'
         }
       }
     );
 
-    const resumeText = response.data.choices[0].message.content;
+    const jsonResume = JSON.parse(response.data.choices[0].message.content);
 
+    // Save to MongoDB (optional)
+    const resume = new Resume({
+      user: userId,
+      basics: jsonResume.basics,
+      skills: jsonResume.skills,
+      education: jsonResume.education,
+      work: jsonResume.work,
+      generatedAt: new Date()
+    });
+    await resume.save();
 
-    // Ensure the 'resumes' directory exists
-const resumeDir = path.join('resumes');
-if (!fs.existsSync(resumeDir)) {
-  fs.mkdirSync(resumeDir);
-}
+    // Write JSON to file
+    const fileName = `${name.replace(/\s+/g, '_')}_resume.json`;
+    const filePath = path.join(__dirname, `../temp/${fileName}`);
+    const pdfPath = filePath.replace('.json', '.pdf');
+    await fs.writeFile(filePath, JSON.stringify(jsonResume, null, 2));
 
-    // Generate PDF
-    const doc = new PDFDocument();
-    const filePath = path.join('resumes', `${name.replace(/\s+/g, '_')}_resume.pdf`);
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
-    doc.fontSize(12).text(resumeText, { align: 'left' });
-    doc.end();
-
-    writeStream.on('finish', () => {
-      res.download(filePath, `${name}_resume.pdf`, err => {
+    // Export PDF with a theme using resume-cli@1.0.0
+    await new Promise((resolve, reject) => {
+      exec(`resume export ${pdfPath} --resume ${filePath} --theme elegant`, (err, stdout, stderr) => {
         if (err) {
-          console.error('Download error:', err);
+          console.error('Export error:', stderr);
+          return reject(stderr);
         }
-        // Clean up file after sending
-        fs.unlink(filePath, () => {});
+        resolve(stdout);
       });
     });
 
+    // Send the PDF as a download
+    res.download(pdfPath, `${name}_resume.pdf`);
+
   } catch (error) {
-    console.error('Resume generation failed:', error.response?.data || error.message);
-    res.status(error.response?.status || 500).json({
-      error: error.response?.data?.error?.message || error.message
-    });
+    console.error('Groq/Export error:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to generate styled resume' });
   }
 };

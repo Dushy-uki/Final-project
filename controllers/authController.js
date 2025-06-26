@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { loginSuccessTemplate } from '../models/resetTemplate.js';
 import { sendEmail } from '../ utils/email.js';
+import { OAuth2Client } from 'google-auth-library'; // add this to top if not already
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const register = async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -100,6 +102,58 @@ export const resetPassword = async (req, res) => {
 export const logoutUser = (req, res) => {
   // Just send success - actual logout is done on client side
   res.status(200).json({ message: 'Logout successful' });
+};
+
+// Google Login Controller
+export const googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new user with googleId
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        password: '', // leave blank or random if required, but ideally not required
+        role: 'user',
+      });
+    }
+
+    // Generate app token
+    const jwtToken = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.status(200).json({
+      token: jwtToken,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        skills: user.skills,
+        bio: user.bio,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(401).json({ error: 'Google login failed' });
+  }
 };
 
 

@@ -1,9 +1,9 @@
+// routes/resume.js
 import express from 'express';
-import { generateResume } from '../controllers/generateResumeController.js';
-// import { verifyToken } from '../middleware/authMiddleware.js';
+import { generateResumeWithGroq } from '../controllers/generateResumeController.js';
 
 const router = express.Router();
 
-router.post('/generate', generateResume);
+router.post('/generate', generateResumeWithGroq);
 
 export default router;

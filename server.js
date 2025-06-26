@@ -37,7 +37,7 @@ import groqRoutes from './routes/groqRoutes.js';
 
 import googleRoutes from './routes/authRoutes.js';
 
-app.use('/api/auth', googleRoutes);
+app.use('/api/auth/google', googleRoutes);
 app.use('/api/groq', groqRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/applications', applicationRoutes);
