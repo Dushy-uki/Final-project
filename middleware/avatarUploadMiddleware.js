@@ -2,6 +2,12 @@ import multer from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import { v2 as cloudinary } from 'cloudinary';
 
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+}); 
+
 // Avatar Storage
 const avatarStorage = new CloudinaryStorage({
   cloudinary,
@@ -19,10 +25,11 @@ const resumeStorage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: 'resumes',
-    resource_type: 'raw', // for non-image files like PDF
-    allowed_formats: ['pdf'],
+    resource_type: 'raw', 
+    allowed_formats: ['pdf', 'doc', 'docx'],
   },
 });
+
 
 const uploadResume = multer({ storage: resumeStorage });
 

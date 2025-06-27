@@ -1,0 +1,55 @@
+{
+  "basics": {
+    "name": "test",
+    "email": "test@gmail.com",
+    "phone": "9876543210"
+  },
+  "work": [
+    {
+      "company": "ABC Pvt Ltd",
+      "position": "MERN Stack Developer",
+      "startDate": "2020-01-01",
+      "endDate": "2022-01-01",
+      "summary": "Worked as a MERN Stack Developer for 2 years"
+    }
+  ],
+  "education": [
+    {
+      "institution": "XYZ University",
+      "area": "Computer Science",
+      "studyType": "B.Tech",
+      "startDate": "2015-01-01",
+      "endDate": "2019-01-01"
+    }
+  ],
+  "skills": [
+    {
+      "name": "JavaScript",
+      "keywords": [
+        "javascript",
+        "js"
+      ]
+    },
+    {
+      "name": "Node.js",
+      "keywords": [
+        "nodejs",
+        "node"
+      ]
+    },
+    {
+      "name": "MongoDB",
+      "keywords": [
+        "mongodb",
+        "nosql"
+      ]
+    },
+    {
+      "name": "React",
+      "keywords": [
+        "react",
+        "reactjs"
+      ]
+    }
+  ]
+}

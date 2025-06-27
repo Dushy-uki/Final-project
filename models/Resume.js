@@ -19,7 +19,7 @@ const resumeSchema = new mongoose.Schema({
     startDate: String,
     endDate: String
   }],
-  work: [{
+  experience: [{
     company: String,
     position: String,
     startDate: String,

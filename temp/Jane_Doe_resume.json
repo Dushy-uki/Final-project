@@ -1,0 +1,52 @@
+{
+  "basics": {
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "phone": "123-456-7890"
+  },
+  "work": [
+    {
+      "company": "ABC Corporation",
+      "position": "Software Engineer",
+      "startDate": "2018-01-01",
+      "endDate": "2020-12-31",
+      "summary": "Developed multiple projects using Node.js, MongoDB, and React"
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Technology",
+      "area": "Computer Science",
+      "studyType": "Bachelor",
+      "startDate": "2015-09-01",
+      "endDate": "2019-06-30"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Programming languages",
+      "keywords": [
+        "Node.js",
+        "JavaScript"
+      ]
+    },
+    {
+      "name": "Databases",
+      "keywords": [
+        "MongoDB"
+      ]
+    },
+    {
+      "name": "Frontend frameworks",
+      "keywords": [
+        "React"
+      ]
+    },
+    {
+      "name": "APIs",
+      "keywords": [
+        "REST APIs"
+      ]
+    }
+  ]
+}

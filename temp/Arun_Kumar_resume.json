@@ -1,0 +1,36 @@
+{
+  "basics": {
+    "name": "Arun Kumar",
+    "email": "test@gmail.com",
+    "phone": "+91 9876543210"
+  },
+  "work": [
+    {
+      "company": "ABC Pvt Ltd",
+      "position": "MERN Stack Developer",
+      "startDate": "2020-01-01",
+      "endDate": "2022-01-01",
+      "summary": "Worked as a MERN Stack Developer for 2 years"
+    }
+  ],
+  "education": [
+    {
+      "institution": "XYZ University",
+      "area": "Computer Science",
+      "studyType": "B.Tech",
+      "startDate": "2016-01-01",
+      "endDate": "2020-01-01"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Programming",
+      "keywords": [
+        "JavaScript",
+        "Node.js",
+        "MongoDB",
+        "React"
+      ]
+    }
+  ]
+}
