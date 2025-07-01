@@ -65,20 +65,23 @@ export const getApplicationsByJob = async (req, res) => {
     const { jobId } = req.params;
     const user = req.user;
 
-    // Check if user is admin or provider of this job
+    // Validate Job
     const job = await Job.findById(jobId);
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
+    // Authorization
     if (user.role !== 'admin' && job.postedBy.toString() !== user.id) {
       return res.status(403).json({ error: 'Not authorized to view applications for this job' });
     }
 
+    // Fetch applications with applicant details
     const applications = await Application.find({ job: jobId })
-      .populate('applicant', 'name email');
+      .populate('applicant', 'name email') // Get name & email of applicant
+      .select('applicant resumeUrl message status createdAt'); // explicitly select important fields
 
     res.status(200).json(applications);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching applications:', err);
     res.status(500).json({ error: 'Error fetching applications for this job' });
   }
 };
