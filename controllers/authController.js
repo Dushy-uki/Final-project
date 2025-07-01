@@ -4,11 +4,45 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { loginSuccessTemplate } from '../models/resetTemplate.js';
 import { sendEmail } from '../ utils/email.js';
-import { OAuth2Client } from 'google-auth-library'; // add this to top if not already
+import { OAuth2Client } from 'google-auth-library';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      email: user.email,
+      name: user.name,
+      type: user.role === 'admin' ? 'adminToken' : user.role === 'provider' ? 'providerToken' : 'userToken'
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' }
+  );
+};
+
+const sendLoginEmail = async (user) => {
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'Login Successful - TimePro',
+      html: loginSuccessTemplate(user.name),
+    });
+  } catch (emailErr) {
+    console.error('Login email send error:', emailErr);
+  }
+};
+
+const allowedRoles = ['admin', 'user', 'provider'];
+
+// ========================== REGISTER ===========================
 
 export const register = async (req, res) => {
   const { name, email, password, role } = req.body;
+
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
 
   try {
     const existingUser = await User.findOne({ email });
@@ -19,14 +53,14 @@ export const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashedPassword, role });
 
-    res.status(201).json({ message: 'Registration successful' });
+    res.status(201).json({ message: `${role} registration successful` });
   } catch (err) {
-    console.error('Register error:', err.message); //  Add this line for debugging
-    res.status(500).json({ error: 'Server error' }); //  Keep this response
+    console.error('Register error:', err.message);
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
-
+// =========================== LOGIN ============================
 
 export const login = async (req, res) => {
   try {
@@ -41,46 +75,31 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
+    const token = generateToken(user);
 
-    
     res.status(200).json({
-      message: 'Login successful',
+      message: `${user.role} login successful`,
       token,
-        role: user.role, // <--- ADD THIS IF NEEDED
+      role: user.role,
       user: {
-            _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    skills: user.skills,   // Add these
-    bio: user.bio,
-    avatar: user.avatar,
-      }
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        skills: user.skills,
+        bio: user.bio,
+        avatar: user.avatar,
+      },
     });
 
-    
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: 'Login Successful - TimePro',
-        html: loginSuccessTemplate(user.name),
-      });
-    } catch (emailErr) {
-      console.error('Login email send error:', emailErr);
-      // Optional: do not return error to client
-    }
-
+    await sendLoginEmail(user);
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed' });
   }
 };
 
+// ======================= RESET PASSWORD ========================
 
 export const resetPassword = async (req, res) => {
   const { token } = req.params;
@@ -100,11 +119,11 @@ export const resetPassword = async (req, res) => {
 };
 
 export const logoutUser = (req, res) => {
-  // Just send success - actual logout is done on client side
   res.status(200).json({ message: 'Logout successful' });
 };
 
-// Google Login Controller
+// =========================== GOOGLE LOGIN ============================
+
 export const googleLogin = async (req, res) => {
   try {
     const { token } = req.body;
@@ -117,26 +136,19 @@ export const googleLogin = async (req, res) => {
     const payload = ticket.getPayload();
     const { email, name, sub: googleId } = payload;
 
-    // Check if user already exists
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Create new user with googleId
       user = await User.create({
         name,
         email,
         googleId,
-        password: '', // leave blank or random if required, but ideally not required
+        password: '',
         role: 'user',
       });
     }
 
-    // Generate app token
-    const jwtToken = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
+    const jwtToken = generateToken(user);
 
     res.status(200).json({
       token: jwtToken,
@@ -155,5 +167,3 @@ export const googleLogin = async (req, res) => {
     res.status(401).json({ error: 'Google login failed' });
   }
 };
-
-

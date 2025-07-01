@@ -52,6 +52,15 @@ export const applyToJob = async (req, res) => {
 export const getApplicationsByJob = async (req, res) => {
   try {
     const { jobId } = req.params;
+    const user = req.user;
+
+    // Check if user is admin or provider of this job
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+
+    if (user.role !== 'admin' && job.postedBy.toString() !== user.id) {
+      return res.status(403).json({ error: 'Not authorized to view applications for this job' });
+    }
 
     const applications = await Application.find({ job: jobId })
       .populate('applicant', 'name email');
@@ -63,26 +72,29 @@ export const getApplicationsByJob = async (req, res) => {
   }
 };
 
-
-//  ADMIN: Update application status
+// Update application status - accessible by Admin or Provider who owns the job
 export const updateApplicationStatus = async (req, res) => {
   try {
     const { status } = req.body;
     const { id } = req.params;
+    const user = req.user;
 
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const application = await Application.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    );
-
+    const application = await Application.findById(id).populate('job');
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
+
+    const job = application.job;
+    if (user.role !== 'admin' && job.postedBy.toString() !== user.id) {
+      return res.status(403).json({ error: 'Not authorized to update this application' });
+    }
+
+    application.status = status;
+    await application.save();
 
     res.status(200).json({ message: 'Status updated', application });
   } catch (err) {
@@ -91,12 +103,11 @@ export const updateApplicationStatus = async (req, res) => {
   }
 };
 
-
 export const getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ applicant: req.user.id })
-      .populate('job', 'title company location deadline') //  includes job info
-      .sort({ createdAt: -1 }); //  latest first
+      .populate('job', 'title company location deadline salary') // now includes salary
+      .sort({ createdAt: -1 }); // latest first
 
     res.status(200).json(applications);
   } catch (err) {
@@ -104,6 +115,7 @@ export const getMyApplications = async (req, res) => {
     res.status(500).json({ error: 'Error fetching your applications' });
   }
 };
+
 
 
 // USER: Update own profile

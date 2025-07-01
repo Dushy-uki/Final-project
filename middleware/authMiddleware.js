@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-// Middleware: Verify JWT Token
+// ✅ Middleware: Verify JWT Token (a.k.a. "protect")
 export const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -12,22 +12,35 @@ export const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // decoded: { id, role, ... }
+    req.user = decoded; // decoded: { id, role }
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
 };
 
-// Middleware: Check if user is Admin
+// Alias for consistency with other projects (optional)
+export const protect = verifyToken;
+
+// ✅ Role-based Access Control
+
 export const isAdmin = (req, res, next) => {
   if (req.user?.role === 'admin') {
     return next();
   }
   return res.status(403).json({ error: 'Access denied: Admins only' });
-  
 };
 
+export const isProvider = (req, res, next) => {
+  if (req.user?.role === 'provider') {
+    return next();
+  }
+  return res.status(403).json({ error: 'Access denied: Providers only' });
+};
 
-
-
+export const isUser = (req, res, next) => {
+  if (req.user?.role === 'user') {
+    return next();
+  }
+  return res.status(403).json({ error: 'Access denied: Users only' });
+};

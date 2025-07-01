@@ -37,6 +37,9 @@ import groqRoutes from './routes/groqRoutes.js';
 
 import googleRoutes from './routes/authRoutes.js';
 
+import providerRoutes from './routes/providerRoutes.js';
+
+
 app.use('/api/auth/google', googleRoutes);
 app.use('/api/groq', groqRoutes);
 app.use('/api/payment', paymentRoutes);
@@ -47,6 +50,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/uploads', express.static('uploads'));
+app.use('/api/provider', providerRoutes);
 
 
 app.use(cors({
