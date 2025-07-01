@@ -3,6 +3,17 @@ import Job from '../models/Job.js';
 import Application from '../models/applicationModel.js';
 import User from '../models/user.js';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import nodemailer from 'nodemailer';
+
+
+const transporter = nodemailer.createTransport({
+  service: 'Gmail', 
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
 
 // USER: Apply for a Job (with file upload)
 export const applyToJob = async (req, res) => {
@@ -83,12 +94,13 @@ export const updateApplicationStatus = async (req, res) => {
       return res.status(400).json({ error: 'Status is required' });
     }
 
-    const application = await Application.findById(id).populate('job');
+    const application = await Application.findById(id).populate('job applicant');
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
 
     const job = application.job;
+
     if (user.role !== 'admin' && job.postedBy.toString() !== user.id) {
       return res.status(403).json({ error: 'Not authorized to update this application' });
     }
@@ -96,12 +108,41 @@ export const updateApplicationStatus = async (req, res) => {
     application.status = status;
     await application.save();
 
-    res.status(200).json({ message: 'Status updated', application });
+    // Compose email message
+    const { email, name } = application.applicant;
+    let subject = '';
+    let html = '';
+
+    if (status === 'accepted') {
+      subject = 'Application Accepted – Interview Invitation';
+      html = `<p>Hi ${name},</p>
+        <p>Congratulations! Your application for <strong>${job.title}</strong> has been accepted.</p>
+        <p>Please attend an interview scheduled for next week. We'll follow up with more details soon.</p>
+        <p>– TimePro Team</p>`;
+    } else if (status === 'rejected') {
+      subject = 'Application Update – Not Selected';
+      html = `<p>Hi ${name},</p>
+        <p>Thank you for applying for <strong>${job.title}</strong>. After careful review, we regret to inform you that your application was not selected this time.</p>
+        <p>Please feel free to apply again for future openings. We appreciate your interest.</p>
+        <p>– TimePro Team</p>`;
+    }
+
+    if (subject && html) {
+      await transporter.sendMail({
+        from: process.env.MAIL_USER,
+        to: email,
+        subject,
+        html,
+      });
+    }
+
+    res.status(200).json({ message: 'Status updated and email sent', application });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update application' });
   }
 };
+
 
 export const getMyApplications = async (req, res) => {
   try {
