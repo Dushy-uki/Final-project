@@ -76,8 +76,8 @@ export const getApplicationsByJob = async (req, res) => {
 
     // Fetch applications with applicant details
     const applications = await Application.find({ job: jobId })
-      .populate('applicant', 'name email') // Get name & email of applicant
-      .select('applicant resumeUrl message status createdAt'); // explicitly select important fields
+      .populate('applicant', 'name email') 
+      .select('applicant resumeUrl message status createdAt'); 
 
     res.status(200).json(applications);
   } catch (err) {
@@ -150,8 +150,8 @@ export const updateApplicationStatus = async (req, res) => {
 export const getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ applicant: req.user.id })
-      .populate('job', 'title company location deadline salary') // now includes salary
-      .sort({ createdAt: -1 }); // latest first
+      .populate('job', 'title company location deadline salary') 
+      .sort({ createdAt: -1 }); 
 
     res.status(200).json(applications);
   } catch (err) {
@@ -165,7 +165,7 @@ export const getMyApplications = async (req, res) => {
 // USER: Update own profile
 export const updateUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id); // Get user by ID from params
+    const user = await User.findById(req.params.id); 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     // Update fields from body
@@ -175,7 +175,7 @@ export const updateUserProfile = async (req, res) => {
     user.bio = req.body.bio || user.bio;
 
     //  Handle uploaded profile image (Cloudinary URL is in req.file.path)
-    if (user.avatar = `http://localhost:5000/${req.file.path}`); // if serving static files
+    if (user.avatar = `http://localhost:5000/${req.file.path}`); 
 
 
     const updatedUser = await user.save();

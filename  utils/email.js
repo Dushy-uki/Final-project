@@ -1,4 +1,3 @@
-// utils/email.js
 import nodemailer from 'nodemailer';
 
 export const sendEmail = async ({ to, subject, html }) => {
