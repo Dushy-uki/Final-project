@@ -1,126 +1,158 @@
-import Resume from '../models/Resume.js';
-import axios from 'axios';
-import fs from 'fs/promises';
-import path from 'path';
-import { exec } from 'child_process';
-import { fileURLToPath } from 'url';
+import dotenv from "dotenv";
+dotenv.config();
+import fs from "fs";
+import path from "path";
+import PDFDocument from "pdfkit";
+import { OpenAI } from "openai";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export const generateResumeWithGroq = async (req, res) => {
-  const { user, name, email, phone, skills, experience, education } = req.body;
+if (!process.env.OPENAI_API_KEY) {
+  console.error("\u274C OPENAI_API_KEY not found in .env!");
+  process.exit(1);
+}
 
-  const prompt = `
-Generate a JSON resume following the https://jsonresume.org schema using this data:
+const withTimeout = (promise, ms = 15000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("OpenAI timeout")), ms)
+    ),
+  ]);
+};
 
+export const generateResumePDF = async (req, res) => {
+  const { name, email, skills, experience, education } = req.body;
+
+  if (!name || !skills || !experience || !education) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const skillsList = Array.isArray(skills) ? skills.join(", ") : skills;
+
+  const prompt = `Return a detailed JSON resume with the following structure:
+{
+  "name": "Full Name",
+  "role": "Job Title",
+  "location": "City",
+  "email": "Email",
+  "phone": "Phone Number",
+  "website": "Portfolio",
+  "github": "GitHub Username",
+  "linkedin": "LinkedIn Username",
+  "skills": {
+    "Frontend": [...],
+    "Backend": [...],
+    "DevOps": [...],
+    "Languages": [...]
+  },
+  "interests": [...],
+  "summary": "Professional summary here...",
+  "experience": [...],
+  "education": [...]
+}
+Use the data:
 Name: ${name}
 Email: ${email}
-Phone: ${phone}
-
-Skills: ${skills.join(', ')}
-
+Skills: ${skillsList}
 Experience: ${experience}
 Education: ${education}
-
-Make sure the JSON contains at least:
-- basics (name, email, phone)
-- work: an array with at least one item with company, position, startDate, endDate, summary
-- education: an array with at least one item with institution, area, studyType, startDate, endDate
-- skills: an array with name and at least 2 keywords
-
-Respond with **strict JSON only** — no extra explanation or markdown.
-`;
+Return only valid JSON.`;
 
   try {
-    // 🧠 Call Together.ai
-    const response = await axios.post(
-      'https://api.together.xyz/v1/chat/completions',
-      {
-        model: 'meta-llama/Llama-3-70b-chat-hf',
-        messages: [{ role: 'user', content: prompt }],
+    const completion = await withTimeout(
+      openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 20000
-      }
+      }),
+      15000
     );
 
-    const raw = response.data.choices[0].message.content;
-    const start = raw.indexOf('{');
-    const end = raw.lastIndexOf('}');
-    if (start === -1 || end === -1) {
-      throw new Error("Together.ai response doesn't contain valid JSON.");
-    }
+    let content = completion.choices[0].message.content?.trim();
+    content = content.replace(/^```json|```$/g, "").trim();
+    const resume = JSON.parse(content);
 
-    const jsonString = raw.slice(start, end + 1);
-    const jsonResume = JSON.parse(jsonString);
+    const filename = `resume_${resume.name.replace(/\s+/g, "_")}.pdf`;
+    res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+    res.setHeader("Content-Type", "application/pdf");
 
-    if (
-      !jsonResume.basics ||
-      !jsonResume.work || !Array.isArray(jsonResume.work) || jsonResume.work.length === 0 ||
-      !jsonResume.education || !Array.isArray(jsonResume.education) || jsonResume.education.length === 0 ||
-      !jsonResume.skills || !Array.isArray(jsonResume.skills) || jsonResume.skills.length === 0
-    ) {
-      console.error("Together raw output:", raw);
-      throw new Error("Incomplete JSON Resume fields in Together.ai response.");
-    }
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    doc.pipe(res);
 
-    // 🗂️ Save to DB
-    const resume = new Resume({
-      user,
-      basics: jsonResume.basics,
-      skills: jsonResume.skills,
-      education: jsonResume.education,
-      experience: jsonResume.work,
-      generatedAt: new Date()
-    });
-    await resume.save();
+    const leftColX = 50;
+    const rightColX = 250;
+    const colGapY = 20;
+    let y = 50;
 
-    // 💾 Write resume to temp files
-    const tempDir = path.join(__dirname, '../temp');
-    await fs.mkdir(tempDir, { recursive: true });
+    // Left Sidebar
+    doc.fontSize(20).font("Helvetica-Bold").text(resume.name, leftColX, y);
+    y += 25;
+    doc.fontSize(12).font("Helvetica").text(resume.role || "", leftColX, y);
+    y += 20;
+    doc.text(resume.location || "", leftColX, y);
+    y += 15;
+    doc.text(resume.email || "", leftColX, y);
+    y += 15;
+    doc.text(resume.phone || "", leftColX, y);
+    y += 15;
+    doc.text(resume.website || "", leftColX, y);
+    y += 15;
+    doc.text(`GitHub: ${resume.github || ""}`, leftColX, y);
+    y += 15;
+    doc.text(`LinkedIn: ${resume.linkedin || ""}`, leftColX, y);
 
-    const fileName = `${name.replace(/\s+/g, '_')}_resume.json`;
-    const filePath = path.join(tempDir, fileName);
-    const pdfPath = filePath.replace('.json', '.pdf');
-
-    await fs.writeFile(filePath, JSON.stringify(jsonResume, null, 2));
-
-    // 🖨️ Convert to PDF
-    await new Promise((resolve, reject) => {
-      exec(`resume export "${pdfPath}" --resume "${filePath}" --theme elegant`, (err, stdout, stderr) => {
-        if (err) {
-          console.error('Export error:', stderr);
-          return reject(stderr);
-        }
-        resolve(stdout);
+    y += 30;
+    const renderSkillBlock = (title, items) => {
+      doc.font("Helvetica-Bold").text(title, leftColX, y);
+      y += 15;
+      items.forEach((item) => {
+        doc.font("Helvetica").text(`• ${item}`, leftColX + 10, y);
+        y += 12;
       });
+      y += 10;
+    };
+
+    Object.entries(resume.skills || {}).forEach(([category, items]) => {
+      renderSkillBlock(category, items);
     });
 
-    // 📥 Send file to client
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${name}_resume.pdf"`);
+    if (resume.languages) renderSkillBlock("Languages", resume.languages);
+    if (resume.interests) renderSkillBlock("Interests", resume.interests);
 
-    res.download(pdfPath, `${name}_resume.pdf`, async (err) => {
-      if (err) {
-        console.error('Download error:', err);
-      }
-      // 🧼 Clean up files
-      try {
-        await fs.unlink(filePath);
-        await fs.unlink(pdfPath);
-      } catch (cleanupErr) {
-        console.warn('Cleanup failed:', cleanupErr.message);
-      }
+    // Right Column
+    let ry = 50;
+    doc.fontSize(14).font("Helvetica-Bold").text("Summary", rightColX, ry);
+    ry += 20;
+    doc.fontSize(11).font("Helvetica").text(resume.summary || "", rightColX, ry, { width: 300 });
+    ry += 80;
+
+    doc.font("Helvetica-Bold").text("Experience", rightColX, ry);
+    ry += 20;
+    (resume.experience || []).forEach((exp) => {
+      doc.font("Helvetica-Bold").text(`${exp.role} at ${exp.company}`, rightColX, ry);
+      ry += 15;
+      doc.font("Helvetica").text(`${exp.duration}`, rightColX, ry);
+      ry += 12;
+      (exp.details || []).forEach((d) => {
+        doc.text(`- ${d}`, rightColX + 10, ry, { width: 300 });
+        ry += 12;
+      });
+      ry += 10;
     });
 
+    doc.font("Helvetica-Bold").text("Education", rightColX, ry);
+    ry += 20;
+    (resume.education || []).forEach((edu) => {
+      doc.font("Helvetica-Bold").text(`${edu.degree}`, rightColX, ry);
+      ry += 15;
+      doc.font("Helvetica").text(`${edu.institution} (${edu.year})`, rightColX, ry);
+      ry += 25;
+    });
+
+    doc.end();
   } catch (error) {
-    console.error('Together/Export error:', error?.response?.data || error.message || error);
-    res.status(500).json({ error: 'Failed to generate styled resume' });
+    console.error("Resume generation error:", error.message);
+    return res.status(500).json({ error: "Failed to generate resume PDF" });
   }
 };
