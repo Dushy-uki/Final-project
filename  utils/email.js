@@ -41,3 +41,13 @@ export const sendConfirmationEmail = async (to, name) => {
     `
   });
 };
+
+export const resetPasswordTemplate = (link) => `
+  <div style="font-family:sans-serif;">
+    <h2>Password Reset Request</h2>
+    <p>Click the link below to reset your password. This link will expire in 1 hour.</p>
+    <a href="${link}" style="display:inline-block;padding:10px 20px;background:#007bff;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
+    <p>If you did not request this, you can safely ignore this email.</p>
+  </div>
+`;
+

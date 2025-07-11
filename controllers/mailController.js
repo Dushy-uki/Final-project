@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/user.js';
 import { sendEmail } from '../ utils/email.js';
-import { resetPasswordTemplate } from '../models/resetTemplate.js';
+import { resetPasswordTemplate } from '../ utils/email.js';
+
 export const forgotPassword = async (req, res) => {
   console.log('Forgot password called, body:', req.body);
   const { email } = req.body;
@@ -13,14 +14,17 @@ export const forgotPassword = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Create JWT token valid for 1 hour
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    const resetLink = `http://localhost:3000/reset-password/${token}`;
+    // Replace with your frontend URL if deployed
+    const resetLink = `http://localhost:5173/reset-password/${token}`;
 
+    // Send email with HTML template
     try {
       await sendEmail({
         to: email,
@@ -38,4 +42,3 @@ export const forgotPassword = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
-

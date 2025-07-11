@@ -2,6 +2,8 @@ import express from 'express';
 import { register, login, logoutUser, googleLogin } from '../controllers/authController.js';
 import { forgotPassword } from '../controllers/mailController.js';
 import passport from 'passport';
+import { resetPassword } from '../controllers/authController.js';
+
 
 const router = express.Router();
 
@@ -17,6 +19,8 @@ router.post('/google-login', googleLogin);
 router.get('/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
+router.post('/reset-password/:token', resetPassword);
+
 
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),

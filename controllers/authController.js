@@ -101,22 +101,34 @@ export const login = async (req, res) => {
 
 // ======================= RESET PASSWORD ========================
 
+
+
 export const resetPassword = async (req, res) => {
   const { token } = req.params;
   const { newPassword } = req.body;
 
   try {
+    // Decode the token to get user ID
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Validate password strength (optional but recommended)
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    // Hash the new password
     const hashed = await bcrypt.hash(newPassword, 10);
 
+    // Update user's password in the database
     await User.findByIdAndUpdate(decoded.id, { password: hashed });
 
     res.status(200).json({ message: 'Password reset successful' });
   } catch (err) {
-    console.error(err);
+    console.error('Reset error:', err);
     res.status(400).json({ error: 'Invalid or expired token' });
   }
 };
+
 
 export const logoutUser = (req, res) => {
   res.status(200).json({ message: 'Logout successful' });
