@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, googleLogin } from '../controllers/authController.js';
+import { register, login, logoutUser, googleLogin } from '../controllers/authController.js';
 import { forgotPassword } from '../controllers/mailController.js';
 import passport from 'passport';
 import { resetPassword } from '../controllers/authController.js';
@@ -32,5 +32,7 @@ router.get('/google/callback',
     res.redirect(`http://localhost:5173/google-success?token=${token}`);
   }
 );
+
+router.post('/logout', logoutUser); // Logout route
 
 export default router;

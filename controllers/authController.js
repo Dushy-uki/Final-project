@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { loginSuccessTemplate } from '../models/resetTemplate.js';
 import { sendEmail } from '../ utils/email.js';
 import { OAuth2Client } from 'google-auth-library';
+import Blacklist from '../models/blacklist.js';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (user) => {
@@ -175,5 +176,25 @@ export const googleLogin = async (req, res) => {
   } catch (error) {
     console.error('Google login error:', error);
     res.status(401).json({ error: 'Google login failed' });
+  }
+};
+
+
+
+export const logoutUser = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(400).json({ error: 'No token provided' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Save token to blacklist with expiry
+    const expiry = new Date(decoded.exp * 1000); // convert exp to ms
+    await Blacklist.create({ token, expiresAt: expiry });
+
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ error: 'Logout failed' });
   }
 };
