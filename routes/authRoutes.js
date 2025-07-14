@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, login, logoutUser, googleLogin } from '../controllers/authController.js';
+import { register, login, googleLogin } from '../controllers/authController.js';
 import { forgotPassword } from '../controllers/mailController.js';
 import passport from 'passport';
 import { resetPassword } from '../controllers/authController.js';
@@ -9,7 +9,6 @@ const router = express.Router();
 
 router.post('/register', register);
 router.post('/login', login);
-router.post('/logout', logoutUser);
 router.post('/forgot-password', forgotPassword);
 
 // ✅ Add this route for Google One-Tap / Token-based login

@@ -43,7 +43,6 @@ export const generateResumePDF = async (req, res) => {
   "skills": {
     "Frontend": [...],
     "Backend": [...],
-    "DevOps": [...],
     "Languages": [...]
   },
   "interests": [...],

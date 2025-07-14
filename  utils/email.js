@@ -43,11 +43,22 @@ export const sendConfirmationEmail = async (to, name) => {
 };
 
 export const resetPasswordTemplate = (link) => `
-  <div style="font-family:sans-serif;">
-    <h2>Password Reset Request</h2>
-    <p>Click the link below to reset your password. This link will expire in 1 hour.</p>
-    <a href="${link}" style="display:inline-block;padding:10px 20px;background:#007bff;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
-    <p>If you did not request this, you can safely ignore this email.</p>
+  <div style="font-family: Arial, sans-serif; background: #f9f9f9; padding: 30px; border-radius: 10px; max-width: 600px; margin: auto; color: #333;">
+    <h2 style="color: #0f172a;">Password Reset Request</h2>
+    <p>We received a request to reset your TimePro account password.</p>
+    <p>If you made this request, click the button below to reset your password. This link will expire in <strong>1 hour</strong>.</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${link}" style="display:inline-block; padding:12px 24px; background-color:#06b6d4; color:#ffffff; text-decoration:none; font-size:16px; border-radius:6px;">
+        Reset Password
+      </a>
+    </div>
+
+    <p>If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+    
+    <hr style="margin: 40px 0;" />
+    <p style="font-size: 12px; color: #888;">© 2025 TimePro • All rights reserved.</p>
   </div>
 `;
+
 

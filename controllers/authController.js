@@ -130,9 +130,7 @@ export const resetPassword = async (req, res) => {
 };
 
 
-export const logoutUser = (req, res) => {
-  res.status(200).json({ message: 'Logout successful' });
-};
+
 
 // =========================== GOOGLE LOGIN ============================
 
