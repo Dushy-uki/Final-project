@@ -161,6 +161,31 @@ export const getMyApplications = async (req, res) => {
 };
 
 
+export const deleteMyApplication = async (req, res) => {
+  try {
+    const applicationId = req.params.id;
+    const userId = req.user.id;
+
+    // Find the application
+    const application = await Application.findById(applicationId);
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    // Check if the logged-in user owns this application
+    if (application.applicant.toString() !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to delete this application' });
+    }
+
+    await Application.findByIdAndDelete(applicationId);
+
+    res.status(200).json({ message: 'Application deleted successfully' });
+  } catch (err) {
+    console.error('Delete application error:', err);
+    res.status(500).json({ error: 'Failed to delete application' });
+  }
+};
 
 // USER: Update own profile
 export const updateUserProfile = async (req, res) => {

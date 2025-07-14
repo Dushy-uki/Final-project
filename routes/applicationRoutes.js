@@ -2,7 +2,8 @@
 import express from 'express';
 import {
   applyToJob,
-   getMyApplications,
+  deleteMyApplication,
+  getMyApplications,
   getApplicationsByJob,
   updateApplicationStatus
 } from '../controllers/applicationController.js';
@@ -22,6 +23,6 @@ router.post('/apply/:jobId', verifyToken, uploadResume.single('resume'), applyTo
 
 router.get('/:jobId', verifyToken, isAdmin, getApplicationsByJob); //  Dynamic param LAST
 router.patch('/:id/status', verifyToken, isAdmin, updateApplicationStatus);
-
+router.delete('/:id', verifyToken, deleteMyApplication); // Delete application by ID
 
 export default router;
