@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // POST /api/payment/create-checkout-session
 export const createCheckoutSession = async (req, res) => {
-  const { amount, purpose, successUrl } = req.body;
+  const { amount, purpose, successUrl,paymentStatus } = req.body;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -23,6 +23,10 @@ export const createCheckoutSession = async (req, res) => {
       mode: 'payment',
       success_url: successUrl || `${process.env.CLIENT_URL}/generate-resume?paid=true`,
       cancel_url: `${process.env.CLIENT_URL}/payment-cancel`,
+       metadata: {
+    userId: req.body.userId,  // send userId from frontend
+    purpose,
+  }
     });
 
     res.status(200).json({ url: session.url });
@@ -34,6 +38,8 @@ export const createCheckoutSession = async (req, res) => {
 
 // POST /api/payment/record
 export const savePayment = async (req, res) => {
+    console.log('savePayment called with body:', req.body);  // <--- Add this
+
   const { userId, name, email, amount, purpose } = req.body;
 
   try {
@@ -43,6 +49,7 @@ export const savePayment = async (req, res) => {
       email,
       amount,
       purpose,
+      paymentStatus: 'pending',
       date: new Date(),
     });
 

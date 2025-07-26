@@ -6,6 +6,11 @@ const paymentSchema = new mongoose.Schema({
   email: String,
   amount: Number,
   purpose: String,
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'succeeded', 'failed'],
+    default: 'pending'
+  },
   date: { type: Date, default: Date.now }
 });
 
